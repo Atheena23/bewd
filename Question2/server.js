@@ -1,95 +1,82 @@
-const express = require("express");
-const fs = require("fs");
-const path = require("path");
+const express = require ('express')
+const fs = require ('fs')
+const app = express()
+const PORT = 3000
+const path = require ('path')
 
-const app = express();
-const PORT = 3000;
-const MEMBERS_FILE = "data/datamembers.json";
+app.use(express.json())
+const FRONTEND_FILE = path.join(__dirname, 'frontend_Project1.html');
+const FILE = "members.json"
 
-app.use(express.json());
+app.get('/', (req, res)=>{
+    res.sendFile(FRONTEND_FILE)
+})
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "frontend", "frontend_Project1.html"));
-});
-
-async function readMembers() {
-  try {
-    const data = await fs.promises.readFile(MEMBERS_FILE, "utf-8");
-    return JSON.parse(data || "[]");
-  } catch (err) {
-    return [];
-  }
+function readMembers(){
+    try{
+        const data = fs.readFileSync(FILE, "utf8")
+        return JSON.parse(data)
+    }catch (err){
+        return [];
+    }
 }
 
-async function writeMembers(members) {
-  return fs.promises.writeFile(MEMBERS_FILE, JSON.stringify(members, null, 2));
+function writeMembers (members){
+    fs.writeFileSync(FILE, JSON.stringify(members, null, 2), "utf8")
 }
 
-app.post("/api/member", async (req, res) => {
-  const { name, email, password } = req.body;
+app.post("/api/register", (req, res)=>{
+    const { name, email, password } = req.body;
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: "Name, email, and password are required" });
-  }
+    let members = readMembers();
 
-  let members = await readMembers();
+    const exists = members.find((m)=>m.email === email);
+    if (exists){
+        return res.status(400).json({error: "Email already registered"})
+    }
 
-  if (members.find(m => m.email === email)) {
-    return res.status(400).json({ error: "Email already registered" });
-  }
+    const newMember = {
+        id: Date.now().toString(),
+        name, 
+        email,
+        password
+    };
+    members.push(newMember);
+    writeMembers(members)
+    res.json({message:"Registration successful", memberId: newMember.id, newMember})
+})
 
-  const newMember = {
-    id: Date.now().toString(),
-    name,
-    email,
-    password 
-  };
+app.post("/api/login", (req, res)=>{
+    const {email, password} = req.body;
 
-  members.push(newMember);
-  await writeMembers(members);
+    const members = readMembers();
+    const member = members.find((m)=> m.email === email && m.password === password)
 
-  res.status(201).json({ success: true, message: "Registration successful", memberId: newMember.id });
-});
+    if (!member){
+        return res.status(401).json({error:"Invalid email and password"})
+    }
+    res.json({message:"Login Successful", token:member.id, member})
+})
 
-app.post("/api/member/login", async (req, res) => {
-  const { email, password } = req.body;
+app.get("/api/profile",(req, res)=>{
+    const authHeader = req.headers["authorization"];
+    if(!authHeader){
+        return res.status(401).json({error: "Not logged in"})
+    }
+    const token = authHeader.split(" ")[1];
+    const members = readMembers();
+    const member = members.find((m)=> m.id === token)
 
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
-  }
+    if (!member){
+        return res.status(404).json({error: "Member not found"})
+    }
+    res.json({id: member.id, name: member.name, email: member.email})
+})
 
-  const members = await readMembers();
-  const member = members.find(m => m.email === email && m.password === password);
+app.post("/api/logout", (req, res)=>{
+    res.json({message: "Logged out successfully"});
+})
 
-  if (!member) {
-    return res.status(401).json({ error: "Invalid email or password" });
-  }
-
-  res.json({ success: true, message: "Login successful", memberId: member.id });
-});
-
-app.get("/api/member", async (req, res) => {
-  const { memberId } = req.query;
-
-  if (!memberId) {
-    return res.status(400).json({ error: "Missing memberId" });
-  }
-
-  const members = await readMembers();
-  const member = members.find(m => m.id === memberId);
-
-  if (!member) {
-    return res.status(404).json({ error: "Member not found" });
-  }
-
-  res.json({ id: member.id, name: member.name, email: member.email });
-});
-
-app.post("/api/logout", (req, res) => {
-  res.json({ success: true, message: "Logged out successfully" });
-});
-
-
-app.listen(PORT, () => {
-  console.log(`Private Club API running at http://localhost:${PORT}`);
-});
+app.listen(PORT, ()=>{
+    console.log(`Server running on http://localhost:${PORT}`);
+})
