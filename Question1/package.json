@@ -1,0 +1,17 @@
+{
+  "name": "question1",
+  "version": "1.0.0",
+  "description": "You are given a complete **frontend (HTML, CSS, JS)** for a Guestbook application.  \r Your task is to build the **backend API** using **Node.js + Express + fs**.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
+  }
+}
